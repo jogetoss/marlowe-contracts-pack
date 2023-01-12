@@ -4,6 +4,8 @@ The Marlowe Contracts Pack integrates Marlowe with Joget, and allows you to depl
 
 Although this can be imported into Joget as a standalone plugin pack, this works in conjunction with the [Cardano Blockchain Pack](https://github.com/jogetoss/cardano-blockchain-pack).
 
+This plugin pack integrates with the [Marlowe Runtime client via AWS Lambda as backend](https://github.com/input-output-hk/marlowe-lambda).
+
 > :warning: **This project is in early development stages and not ready for production use.**
 
 # Getting Help
