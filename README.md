@@ -1,6 +1,9 @@
 # Description
 
-This repository is meant to serve as a general template for how to set up new repositories in the JogetOSS organization. 
+The Marlowe Contracts Pack integrates Marlowe with Joget, and allows you to deploy and execute Marlowe smart contracts in Joget apps.
+Although this can be imported into Joget as a standalone plugin pack, this works in conjunction with the [Cardano Blockchain Pack](https://github.com/jogetoss/cardano-blockchain-pack)
+
+> :warning: **This project is in early development stages and not ready for production use.**
 
 # Getting Help
 
