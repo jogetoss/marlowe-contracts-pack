@@ -1,6 +1,7 @@
 package org.joget.marlowe.client.lambda.backend;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonParser;
 import java.util.Map;
 import lombok.NonNull;
 import org.joget.commons.util.LogUtil;
@@ -121,11 +122,19 @@ public class LambdaBackend implements BackendService {
             
             final String responseJson = response.payload().asUtf8String();
             
-            //TODO: Handle response error as object. Error is in response string, but will still return status 200
+            //Correct JSON response should be an object. Any errors returned by cardano is a plain String.
+            try {
+                JsonParser.parseString(responseJson).getAsJsonObject();
+            } catch (Exception e) {
+                LogUtil.warn(getClassName(), "Backend returned error --> " + responseJson);
+                closeLambdaClient();
+                return null;
+            }
             
             return responseJson;
         } catch (Exception e) {
             LogUtil.error(getClassName(), e, "Error invoking lambda function --> " + functionName + " . Reason: " + e.getMessage());
+            closeLambdaClient();
         }
         
         return null;

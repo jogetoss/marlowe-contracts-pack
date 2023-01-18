@@ -5,10 +5,8 @@ import com.bloxbean.cardano.client.common.ADAConversionUtil;
 import com.bloxbean.cardano.client.common.model.Network;
 import com.bloxbean.cardano.client.common.model.Networks;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
-import com.bloxbean.cardano.client.util.HexUtil;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -94,7 +92,7 @@ public class ContractExecutorTool extends DefaultApplicationPlugin {
                     final String marloweCoreContractJson = WorkflowUtil.processVariable(getPropertyString("marloweCoreContractJson"), "", wfAssignment);
                     
                     Object[] contractRoles = (Object[]) props.get("contractRoles");
-                    Map<String, String> roleMap = new HashMap<String, String>();
+                    Map<String, String> roleMap = new HashMap();
                     if (contractRoles != null && contractRoles.length > 0) {
                         for (Object o : contractRoles) {
                             Map mapping = (HashMap) o;
@@ -102,8 +100,7 @@ public class ContractExecutorTool extends DefaultApplicationPlugin {
                             String roleName = WorkflowUtil.processVariable(mapping.get("roleName").toString().trim(), "", wfAssignment);
                             String address = WorkflowUtil.processVariable(mapping.get("address").toString().trim(), "", wfAssignment);
                             
-                            //Possible encoding issue??
-                            roleMap.put(roleName, HexUtil.encodeHexString(address.getBytes(StandardCharsets.UTF_8)));
+                            roleMap.put(roleName, address);
                         }
                     }
                     
@@ -214,10 +211,17 @@ public class ContractExecutorTool extends DefaultApplicationPlugin {
             //Different contract ID & Tx ID calculated somehow VS after submitting to chain. CANNOT TRUST RESPONSEBODY
             if (responseBody == null) {
                 LogUtil.warn(getClassName(), "Response body is empty! Aborting plugin execution...");
+                storeToWorkflowVariable("FAILED", null, null);
                 return null;
             }
             
-            final Transaction unsignedTx = ContractUtil.deserializeTxBodyCborToTx(responseBody.getBody().getCborHex());
+            if (responseBody.getErrorType() != null) {
+                LogUtil.warn(getClassName(), "Response returned error --> " + responseBody.getErrorMessage());
+                storeToWorkflowVariable("FAILED", null, null);
+                return null;
+            }
+            
+            final Transaction unsignedTx = ContractUtil.deserializeTxCbor(responseBody.getBody().getCborHex());
             final Transaction signedTx = actor.sign(unsignedTx);
             
             final ResponseTxId responseTxId = backendService.submitTransaction(
@@ -228,13 +232,19 @@ public class ContractExecutorTool extends DefaultApplicationPlugin {
                         )
             );
             
-            if (responseTxId.getErrorType() != null) {
-                LogUtil.warn(getClassName(), "Transaction failed to submit. Error message --> " + responseTxId.getErrorMessage());
-                storeToWorkflowVariable(wfAssignment.getActivityId(), "FAILED", null, null);
+            if (responseTxId == null) {
+                LogUtil.warn(getClassName(), "Transaction failed to submit...");
+                storeToWorkflowVariable("FAILED", null, null);
                 return null;
             }
             
-            storeToWorkflowVariable(wfAssignment.getActivityId(), "SUCCESS", responseTxId.getTxId(), responseTxId.getTxId() + "#1");
+            if (responseTxId.getErrorType() != null) {
+                LogUtil.warn(getClassName(), "Transaction failed to submit with error --> " + responseTxId.getErrorMessage());
+                storeToWorkflowVariable("FAILED", null, null);
+                return null;
+            }
+            
+            storeToWorkflowVariable("SUCCESS", responseTxId.getTxId(), responseTxId.getTxId() + "#1");
             
         } catch (Exception e) {
             LogUtil.error(getClassName(), e, "Error executing " + getName() + "...");
@@ -243,34 +253,31 @@ public class ContractExecutorTool extends DefaultApplicationPlugin {
         return null;
     }
     
-    private void storeToWorkflowVariable(String activityId, String txSubmitStatus, String txId, String contractId) {
+    private void storeToWorkflowVariable(String txSubmitStatus, String txId, String contractId) {
         String wfTransactionSubmitStatus = getPropertyString("wfTransactionSubmitStatus");
         String wfTransactionId = getPropertyString("wfTransactionId");
         String wfContractId = getPropertyString("wfContractId");
         
         storeValuetoActivityVar(
-                activityId, 
                 wfTransactionSubmitStatus, 
                 txSubmitStatus
         );
         storeValuetoActivityVar(
-                activityId, 
                 wfTransactionId, 
                 txId
         );
         storeValuetoActivityVar(
-                activityId, 
                 wfContractId, 
                 contractId
         );
     }
     
-    private void storeValuetoActivityVar(String activityId, String variable, String value) {
-        if (activityId == null || activityId.isEmpty() || variable.isEmpty() || value == null) {
+    private void storeValuetoActivityVar(String variable, String value) {
+        if (variable.isEmpty() || value == null) {
             return;
         }
         
-        workflowManager.activityVariable(activityId, variable, value);
+        workflowManager.activityVariable(wfAssignment.getActivityId(), variable, value);
     }
     
     private Network getNetwork(String networkType) {

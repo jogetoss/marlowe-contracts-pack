@@ -23,10 +23,10 @@ public class RequestApply extends LambdaRequest {
     @NonNull private Inputs[] inputs;
     
     @Builder.Default
-    @NonNull private BigInteger validityLowerBound = ContractUtil.getUnixTimeAhead(ChronoUnit.MINUTES, -2);
+    @NonNull private BigInteger validityLowerBound = ContractUtil.getUnixTime(ChronoUnit.MINUTES, -2);
     
     @Builder.Default
-    @NonNull private BigInteger validityUpperBound = ContractUtil.getUnixTimeAhead(ChronoUnit.MINUTES, 2);
+    @NonNull private BigInteger validityUpperBound = ContractUtil.getUnixTime(ChronoUnit.MINUTES, 2);
     
     @Builder.Default
     private JsonObject metadata = new JsonObject();
