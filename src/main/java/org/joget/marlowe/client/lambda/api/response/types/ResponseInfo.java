@@ -1,5 +1,6 @@
 package org.joget.marlowe.client.lambda.api.response.types;
 
+import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 import org.joget.marlowe.client.lambda.api.response.LambdaResponse;
@@ -14,6 +15,6 @@ public class ResponseInfo extends LambdaResponse {
     @SerializedName("response")
     private final String responseName = "info";
     
-    private String creation;
-    private String[] steps;
+    private JsonObject creation;
+    private JsonObject[] steps;
 }

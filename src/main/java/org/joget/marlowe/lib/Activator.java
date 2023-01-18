@@ -16,7 +16,7 @@ public class Activator implements BundleActivator {
         //Register plugin here
         registrationList.add(context.registerService(ContractExecutorTool.class.getName(), new ContractExecutorTool(), null));
 //        registrationList.add(context.registerService(ContractInfoDatalistBinder.class.getName(), new ContractInfoDatalistBinder(), null));
-//        registrationList.add(context.registerService(ContractDataHashVariable.class.getName(), new ContractDataHashVariable(), null));
+        registrationList.add(context.registerService(ContractDataHashVariable.class.getName(), new ContractDataHashVariable(), null));
     }
 
     public void stop(BundleContext context) {
