@@ -14,5 +14,7 @@ public class ResponseResult extends LambdaResponse {
     @SerializedName("response")
     private final String responseName = "result";
     
-    private boolean result;
+    //true means added to list of followed contracts, false means already added previously
+    @SerializedName("result")
+    private boolean addedToFollowedList;
 }

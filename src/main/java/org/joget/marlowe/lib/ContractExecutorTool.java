@@ -15,13 +15,18 @@ import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.commons.util.LogUtil;
+import org.joget.commons.util.PluginThread;
 import org.joget.marlowe.client.BackendService;
 import org.joget.marlowe.client.lambda.api.request.types.RequestApply;
 import org.joget.marlowe.client.lambda.api.request.types.RequestCreate;
+import org.joget.marlowe.client.lambda.api.request.types.RequestFollow;
 import org.joget.marlowe.client.lambda.api.request.types.RequestSubmit;
+import org.joget.marlowe.client.lambda.api.request.types.RequestWait;
 import org.joget.marlowe.client.lambda.api.request.types.RequestWithdraw;
 import org.joget.marlowe.client.lambda.api.response.types.ResponseBody;
+import org.joget.marlowe.client.lambda.api.response.types.ResponseResult;
 import org.joget.marlowe.client.lambda.api.response.types.ResponseTxId;
+import org.joget.marlowe.client.lambda.api.response.types.ResponseTxInfo;
 import org.joget.marlowe.client.lambda.api.spec.apply.Address;
 import org.joget.marlowe.client.lambda.api.spec.apply.InputParty;
 import org.joget.marlowe.client.lambda.api.spec.apply.Inputs;
@@ -244,7 +249,40 @@ public class ContractExecutorTool extends DefaultApplicationPlugin {
                 return null;
             }
             
-            storeToWorkflowVariable("SUCCESS", responseTxId.getTxId(), responseTxId.getTxId() + "#1");
+            final String transactionId = responseTxId.getTxId();
+            final String contractId = transactionId + "#1";
+            
+            storeToWorkflowVariable("SUCCESS", transactionId, contractId);
+            
+            if (contractAction.equals(ContractAction.START_CONTRACT)) {
+                //wait for transaction in separate thread then follow the contract
+                Thread waitTxThread = new PluginThread(() -> {
+                    LogUtil.info(getClassName(), "Waiting for transaction confirmation for --> " + transactionId);
+                    
+                    final ResponseTxInfo responseTxInfo = backendService.waitTxConfirmation(
+                            RequestWait.builder()
+                                    .txId(transactionId)
+    //                                .pollingSeconds(2) //Defaults to 2 seconds
+                                    .build()
+                    );
+                    
+                    LogUtil.info(getClassName(), "Transaction is confirmed for --> " + transactionId);
+                    
+                    if (responseTxInfo != null && responseTxInfo.getTransaction() != null) {
+                        final ResponseResult responseResult = backendService.followContract(
+                                new RequestFollow(contractId)
+                        );
+                        LogUtil.info(
+                                getClassName(), 
+                                responseResult.isAddedToFollowedList() ? "Contract " + contractId + " has been added to follow list." 
+                                        : "Contract " + contractId + " already followed previously."
+                        );
+                    } else {
+                        LogUtil.warn(getClassName(), "Unexpected error waiting for transaction confirmation...");
+                    }
+                });
+                waitTxThread.start();
+            }
             
         } catch (Exception e) {
             LogUtil.error(getClassName(), e, "Error executing " + getName() + "...");
