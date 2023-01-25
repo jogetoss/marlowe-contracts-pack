@@ -254,20 +254,21 @@ public class ContractExecutorTool extends DefaultApplicationPlugin {
             
             storeToWorkflowVariable("SUCCESS", transactionId, contractId);
             
-            if (contractAction.equals(ContractAction.START_CONTRACT)) {
-                //wait for transaction in separate thread then follow the contract
-                Thread waitTxThread = new PluginThread(() -> {
-                    LogUtil.info(getClassName(), "Waiting for transaction confirmation for --> " + transactionId);
-                    
-                    final ResponseTxInfo responseTxInfo = backendService.waitTxConfirmation(
-                            RequestWait.builder()
-                                    .txId(transactionId)
-    //                                .pollingSeconds(2) //Defaults to 2 seconds
-                                    .build()
-                    );
-                    
-                    LogUtil.info(getClassName(), "Transaction is confirmed for --> " + transactionId);
-                    
+            //wait for transaction in separate thread
+            Thread waitTxThread = new PluginThread(() -> {
+                LogUtil.info(getClassName(), "Waiting for transaction confirmation for --> " + transactionId);
+
+                final ResponseTxInfo responseTxInfo = backendService.waitTxConfirmation(
+                        RequestWait.builder()
+                                .txId(transactionId)
+//                                .pollingSeconds(2) //Defaults to 2 seconds
+                                .build()
+                );
+
+                LogUtil.info(getClassName(), "Transaction is confirmed for --> " + transactionId);
+
+                if (contractAction.equals(ContractAction.START_CONTRACT)) {
+                    //if this is create contract, auto follow the contract
                     if (responseTxInfo != null && responseTxInfo.getTransaction() != null) {
                         final ResponseResult responseResult = backendService.followContract(
                                 new RequestFollow(contractId)
@@ -280,9 +281,9 @@ public class ContractExecutorTool extends DefaultApplicationPlugin {
                     } else {
                         LogUtil.warn(getClassName(), "Unexpected error waiting for transaction confirmation...");
                     }
-                });
-                waitTxThread.start();
-            }
+                }
+            });
+            waitTxThread.start();
             
         } catch (Exception e) {
             LogUtil.error(getClassName(), e, "Error executing " + getName() + "...");
